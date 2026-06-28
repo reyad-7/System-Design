@@ -286,6 +286,147 @@ graph TD
 
 ---
 
+
+## Handling Write Conflicts in Multi-Primary Databases
+
+When multiple nodes accept writes simultaneously for the same data, a **write conflict** occurs:
+
+```
+Node 1 (US West)   ←── no sync yet ──→   Node 2 (US East)
+
+User A writes: balance = $100             User B writes: balance = $50
+(same row, same time)
+
+Which one wins? 🤷
+```
+
+Both nodes accepted the write — now they have **different values for the same data**. The following strategies exist to resolve this.
+
+---
+
+### 1. Last Write Wins (LWW)
+
+Every write has a timestamp — the most recent timestamp wins.
+
+```
+Node 1: balance = $100  (timestamp: 10:00:00.100)
+Node 2: balance = $50   (timestamp: 10:00:00.200) ← wins
+Final:  balance = $50
+```
+
+| | |
+|---|---|
+| ✅ | Simple — used by Cassandra by default |
+| ❌ | The $100 write is silently lost — dangerous for financial data |
+| ❌ | Clock skew between servers can cause wrong results |
+
+---
+
+### 2. Vector Clocks
+
+Instead of a single timestamp, each node tracks a **version history** of the data. When a conflict is detected the system knows exactly which writes happened concurrently and can either resolve automatically or flag for manual resolution.
+
+```
+Node 1: {A:1, B:0} → balance = $100
+Node 2: {A:0, B:1} → balance = $50
+Conflict detected → cannot auto-resolve → flag it
+```
+
+| | |
+|---|---|
+| ✅ | Detects conflicts accurately |
+| ✅ | Used by Amazon DynamoDB |
+| ❌ | Complex to implement |
+| ❌ | Some conflicts still need application-level resolution |
+
+---
+
+### 3. Conflict-Free Replicated Data Types (CRDTs)
+
+Design your data in a way that **conflicts are mathematically impossible** — operations are designed to always merge cleanly regardless of order.
+
+```
+Node 1 increments counter by +10
+Node 2 increments counter by +5
+Merge: total = +15  ✅  (always correct regardless of order)
+```
+
+| | |
+|---|---|
+| ✅ | No conflicts by design |
+| ✅ | Used in collaborative tools — Google Docs, Figma |
+| ❌ | Only works for specific data types — not everything can be modelled as a CRDT |
+| ❌ | Does not work for cases like "set balance to X" |
+
+---
+
+### 4. Distributed Transactions (2PC — Two Phase Commit)
+
+Before committing a write, a **coordinator** asks all nodes in two phases:
+
+```
+Phase 1 — Prepare:
+Coordinator → Node 1: "Can you commit balance = $100?" → Yes ✅
+Coordinator → Node 2: "Can you commit balance = $100?" → Yes ✅
+
+Phase 2 — Commit:
+Coordinator → All nodes: "Commit!" ✅
+```
+
+If any node says no in Phase 1 → all nodes rollback.
+
+| | |
+|---|---|
+| ✅ | Strong consistency — no conflicts possible |
+| ❌ | Very slow — multiple round trips across nodes |
+| ❌ | If coordinator crashes mid-transaction → system can get stuck |
+| ❌ | Not suitable for high-throughput global systems |
+
+---
+
+### 5. Quorum Writes
+
+Require a **majority of nodes** to confirm a write before it is considered successful.
+
+```
+3 nodes total — quorum = 2
+
+Write → Node 1 ✅
+Write → Node 2 ✅
+Write → Node 3 ❌ (slow / down)
+
+Quorum reached (2/3) → write succeeds ✅
+Node 3 syncs when it recovers
+```
+
+| | |
+|---|---|
+| ✅ | Balance between consistency and availability |
+| ✅ | Used by Cassandra, DynamoDB |
+| ❌ | Still possible to have conflicts if quorum nodes diverge |
+
+---
+
+### Summary
+
+| Strategy | Consistency | Complexity | Best For |
+|---|---|---|---|
+| **Last Write Wins** | Weak | Low | Non-critical data, counters |
+| **Vector Clocks** | Strong detection | Medium | Systems needing conflict visibility |
+| **CRDTs** | Conflict-free | Medium | Counters, sets, collaborative editing |
+| **2PC** | Strong | High | Financial transactions, critical data |
+| **Quorum Writes** | Tunable | Medium | High throughput with acceptable staleness |
+
+> 💡 In practice most systems combine strategies — Cassandra uses **LWW + Quorum writes** by default, while CockroachDB uses **distributed transactions** for strong consistency across regions.
+
+---
+
+### 🤔 Critical Thinking
+
+**Q: If 2PC guarantees strong consistency, why don't all systems use it?**
+
+A: Because it is slow and fragile at scale. Every write requires multiple network round trips across nodes — in a global system where nodes are thousands of miles apart, this adds significant latency to every single write. Worse, if the coordinator crashes between Phase 1 and Phase 2, nodes are left in a locked state waiting for a decision that never comes. For high-throughput systems, the performance cost is simply too high.
+
 ## Key Takeaways
 
 - A **data centre** is a physical building housing thousands of servers — adding more servers there improves capacity but not latency for distant users.
