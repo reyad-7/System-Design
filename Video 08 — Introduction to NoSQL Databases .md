@@ -289,23 +289,41 @@ NoSQL clusters replicate data across multiple nodes for reliability. Three key p
 | **W (Write Quorum)** | Nodes that must confirm a write | W=2 → 2 nodes must confirm before success |
 | **R (Read Quorum)** | Nodes that must agree on a read | R=2 → read from 2 nodes and compare |
 
+```mermaid
+graph TD
+    Client -->|Write Request| Coordinator[Coordinator Node]
+
+    Coordinator -->|Replicate| N1[Node 1]
+    Coordinator -->|Replicate| N2[Node 2]
+    Coordinator -->|Replicate| N3[Node 3]
+    Coordinator -.->|Not stored here| N4[Node 4]
+    Coordinator -.->|Not stored here| N5[Node 5]
+
+    subgraph RF3[RF = 3 - data stored on these nodes]
+        N1
+        N2
+        N3
+    end
+
+    subgraph REST[Remaining cluster nodes]
+        N4
+        N5
+    end
+```
+
+- **W = 2** — nodes 1 and 2 must confirm the write before success
+- **R = 2** — nodes 2 and 3 must agree on the read value
+- **W + R = 4 > RF = 3** → Strong Consistency guaranteed ✅
+
 ### The Consistency Formula
 
 ```
-If W + R > RF → Strong Consistency guaranteed
-If W + R ≤ RF → Eventual Consistency (faster but possibly stale)
+W + R > RF → Strong Consistency guaranteed
+W + R ≤ RF → Eventual Consistency (faster but possibly stale)
 ```
 
-**Example with RF=3:**
+> 💡 When W + R > RF, at least one node is guaranteed to have participated in both the last write and the current read — meaning you always get the latest data. Lowering W or R below this threshold trades consistency for lower latency.
 
-```
-Strong Consistency:  W=2, R=2 → W+R=4 > RF=3 ✅
-Eventual Consistency: W=1, R=1 → W+R=2 ≤ RF=3 ⚠️
-```
-
-> 💡 When W + R > RF, at least one node is guaranteed to have participated in both the last write and the current read — meaning you always get the latest data.
-
----
 
 ## Consistent Hashing
 
