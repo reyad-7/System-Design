@@ -4,6 +4,12 @@
 > A structured, growing collection of notes from a system design playlist — Mermaid diagrams, comparison tables, and Q&As included. Built to actually understand the concepts, not just watch the videos.
 
 ---
+##  Source Playlist
+
+All notes in this repo are based on this system design playlist — highly recommended to watch alongside the notes:
+
+[🔗 Watch the Playlist](https://youtube.com/playlist?list=PL_c9BZzLwBRLSs6x50D5WIH76VCUxJs9E&si=4iIgSbWFqBroQXqc)
+
 
 ## Videos Index
 
