@@ -223,7 +223,7 @@ The `EnforceRateLimit` property is a **hook**: a subclass can override it to cha
 
 A worked example of Strategy + Template Method + Factory, with one endpoint per payment method and shared checks in a base class. All names, rules, and counts in it are fictional.
 
-**[Payment_Strategy_Flow.html](./assets/Payment_Strategy_Flow.html)**: download and open locally. It contains a class map and a clickable step-by-step trace for each payment method.
+**[Payment_Strategy_Flow.html](https://htmlpreview.github.io/?https://github.com/reyad-7/System-Design/blob/main/concepts/design-patterns/assets/Payment_Strategy_Flow.html)**:It contains a class map and a clickable step-by-step trace for each payment method.
 
 How its parts map to this note:
 
